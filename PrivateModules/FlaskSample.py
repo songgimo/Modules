@@ -11,12 +11,7 @@ app = Flask(__name__)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-f_hdlr = logging.FileHandler('ServerLog.log')
-s_hdlr = logging.StreamHandler()
-
-logger.addHandler(f_hdlr)
-logger.addHandler(s_hdlr)
-
+logger.addHandler(logging.FileHandler('ServerLog.log'))
 
 cfg = configparser.ConfigParser()
 cfg.read('APISettings.ini')
