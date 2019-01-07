@@ -45,7 +45,7 @@ class IherbApiModule:
                 rq = requests.request(method, url, params=extra, headers=self.headers, proxies=self.__proxy)
 
             if rq.status_code == 403:
-                return False, '', 'change proxy list.'
+                return False, '', 'change proxy list'
 
             res = rq.json()
 
