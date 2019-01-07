@@ -21,7 +21,7 @@ asyncio, https://docs.python.org/3/library/asyncio.html
 
 aiohttp, https://aiohttp.readthedocs.io/en/stable/
 
-## used FrameWork
+## used framework
 flask, http://flask.pocoo.org/
 
 ## environment
