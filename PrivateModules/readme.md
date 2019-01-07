@@ -26,7 +26,9 @@ flask, http://flask.pocoo.org/
 
 ## environment
 Window 10
+
 Linux
+
 Pycharm
 
 
