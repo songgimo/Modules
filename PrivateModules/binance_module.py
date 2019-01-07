@@ -212,6 +212,6 @@ class BaseBinance:
             if float(bal['free']) > 0:
                 remaining[bal['asset'].upper()] = float(bal['free'])
 
-        return True, remaining, ''
+        return remaining
 
 
