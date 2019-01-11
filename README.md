@@ -35,6 +35,8 @@ Pycharm
 
 
 ## Update log
+* 0.0.11
+    * Update PriceCompare, move flasksample.py to Example folder.
 
 * 0.0.1
     * first update.
