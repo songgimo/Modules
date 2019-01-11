@@ -8,15 +8,17 @@ import jwt
 
 
 class BaseUpbit:
-    def __init__(self, key, secret):
+    def __init__(self, **kwargs):
         '''
         :param key: input your upbit key
         :param secret: input your upbit secret
         '''
 
         self._endpoint = 'https://api.upbit.com/v1'
-        self.__key = key
-        self.__secret = secret
+
+        if kwargs:
+            self.__key = kwargs['key']
+            self.__secret = kwargs['secret']
 
     def public_api(self, method, path, extra=None, header=None):
         if header is None:
