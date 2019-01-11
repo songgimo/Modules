@@ -20,6 +20,10 @@ asyncio, https://docs.python.org/3/library/asyncio.html
 
 aiohttp, https://aiohttp.readthedocs.io/en/stable/
 
+selenium, https://selenium-python.readthedocs.io/
+
+
+
 and etc..
 
 ## Used Framework
