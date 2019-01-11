@@ -10,11 +10,12 @@ import aiohttp
 
 
 class BaseBinance:
-    def __init__(self, key, secret):
+    def __init__(self, **kwargs):
         self._endpoint = 'https://api.binance.com'
 
-        self.__key = key
-        self.__secret = secret
+        if kwargs:
+            self.__key = kwargs['key']
+            self.__secret = kwargs['secret']
 
     def private_api(self, method, path, server_time, params=None):
         if params is None:
