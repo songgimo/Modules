@@ -81,7 +81,7 @@ def gallery():
     return render_template('gallery.html', image_names=os.listdir('/'.join([APP_ROOT, DIR_PATH])))
 
 
-app.run(port=80, host='0.0.0.0')
+app.run(port=PORT, host='0.0.0.0')
 
 
 
