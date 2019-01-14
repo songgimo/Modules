@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+{{image_names}}
+
+{% for image_name in image_names %}
+<img src="{{url_for('send_to_gallery', filename=image_name)}}">
+
+{% endfor %}
+</body>
+</html>
