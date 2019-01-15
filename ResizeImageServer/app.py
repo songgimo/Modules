@@ -20,20 +20,20 @@ LOCAL = '{}://{}:{}'.format(PROTOCOL, MY_IP, PORT)
 def thumbnail_maker(img):
     r = requests.get(img)
     path = '/'.join([APP_ROOT, DIR_PATH, 'thumb.jpg'])
-    with open(path, 'wb') as f:  #
+    with open(path, 'wb') as f:
         f.write(r.content)
     image = Image.open(path)
     image.thumbnail((200, 200))
 
     image.save(path)
 
-    return 'thumb.jpg'
+    return '/'.join([LOCAL, 'upload', 'thumb.jpg'])
 
 
 def detail_resizing(img):
     r = requests.get(img)
     path = '/'.join([APP_ROOT, DIR_PATH, 'detail.jpg'])
-    with open(path, 'wb') as f:  #
+    with open(path, 'wb') as f:
         f.write(r.content)
     image = Image.open(path)
 
@@ -41,7 +41,33 @@ def detail_resizing(img):
 
     image.save(path)
 
-    return 'detail.jpg'
+    return '/'.join([LOCAL, 'upload', 'detail.jpg'])
+
+
+def detail_cropping(img):
+    r = requests.get(img)
+    path = '/'.join([APP_ROOT, DIR_PATH, 'detail.jpg'])
+    with open(path, 'wb') as f:
+        f.write(r.content)
+    image = Image.open(path)
+    split_set = int(image.size[1] / 1500) + 1
+
+    point, details = 0, []
+    for n in range(split_set):
+        file_ = 'detail_{}.jpg'.format(n)
+        details.append('/'.join([LOCAL, 'upload', file_]))
+
+        width, height = image.size
+        left, top, right, bottom = 0, point, width, point + 1500
+
+        if bottom > height:
+            bottom = height
+
+        image.crop((left, top, right, bottom)).save('/'.join([APP_ROOT, DIR_PATH, file_]))
+
+        point += 1500
+
+    return details
 
 
 @app.route('/upload', methods=['POST'])
@@ -58,14 +84,14 @@ def upload():
 
         if res['type_'] == 'thumb':
             save = thumbnail_maker(res['image_path'])
-            return json.dumps({'suc': True, 'data': '/'.join([LOCAL, 'upload', save])})
+            return json.dumps({'suc': True, 'data': '/'.join([LOCAL, 'upload', save]), 'msg': ''})
 
         elif res['type_'] == 'detail':
-            save = detail_resizing(res['image_path'])
-            return json.dumps({'suc': True, 'data': '/'.join([LOCAL, 'upload', save])})
+            save = detail_cropping(res['image_path'])
+            return json.dumps({'suc': True, 'data': save, 'msg': ''})
 
         else:
-            return json.dumps({'suc': False, 'msg': 'invalid type. select thumb or detail'})
+            return json.dumps({'suc': False, 'data': '', 'msg': 'invalid type. select thumb or detail'})
 
     else:
         return json.dumps({'suc': False, 'data': '', 'msg': 'invalid method.'})
