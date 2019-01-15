@@ -46,18 +46,20 @@ def detail_resizing(img):
 
 def detail_cropping(img):
     r = requests.get(img)
+
     path = '/'.join([APP_ROOT, DIR_PATH, 'detail.jpg'])
     with open(path, 'wb') as f:
         f.write(r.content)
     image = Image.open(path)
+
     split_set = int(image.size[1] / 1500) + 1
+    width, height = image.size
 
     point, details = 0, []
     for n in range(split_set):
         file_ = 'detail_{}.jpg'.format(n)
         details.append('/'.join([LOCAL, 'upload', file_]))
 
-        width, height = image.size
         left, top, right, bottom = 0, point, width, point + 1500
 
         if bottom > height:
