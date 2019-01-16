@@ -25,7 +25,7 @@ class Korbit:
         self.__token = None
         self.token_time = 0
 
-    def public_api(self, method, path, params=None):
+    def _public_api(self, method, path, params=None):
         if params is None:
             params = {}
 
@@ -46,11 +46,11 @@ class Korbit:
 
         return True, res, ''
 
-    def private_api(self, method, path, params=None):
+    def _private_api(self, method, path, params=None):
         if params is None:
             params = {'nonce': int(time.time())}
 
-        return self.public_api(method, path, params)
+        return self._public_api(method, path, params)
 
     def header(self):
         return {'Authorization': "{} {}".format(self.__token['token_type'], self.__token['access_token'])}
@@ -92,7 +92,7 @@ class Korbit:
             'type': 'market',
             'fiat_amount': amount,
         }
-        return self.private_api('post', '/'.join(['v1', 'user', 'orders', 'buy']), data)
+        return self._private_api('post', '/'.join(['v1', 'user', 'orders', 'buy']), data)
 
     def sell(self, coin, amount):
         data = {
@@ -101,7 +101,7 @@ class Korbit:
             'coin_amount': amount,
         }
 
-        return self.private_api('post', '/'.join(['v1', 'user', 'orders', 'sell']), data)
+        return self._private_api('post', '/'.join(['v1', 'user', 'orders', 'sell']), data)
 
     def withdraw(self, coin, amount, to_address, payment_id=None):
         # Korbit API do not support withdraw coin except BTC
@@ -113,7 +113,7 @@ class Korbit:
 
         }
 
-        return self.private_api('POST', '/'.join(['v1', 'user', 'coins', 'out']), params)
+        return self._private_api('POST', '/'.join(['v1', 'user', 'coins', 'out']), params)
 
     def balance_avaliable(self, data):
         return {coin: float(data[coin]['available']) for coin in data.keys()}
@@ -144,7 +144,7 @@ class Korbit:
         if params is None:
             params = {'nonce': int(time.time())}
 
-        return await self.async_public_api(method, path, params)
+        return await self.async__public_api(method, path, params)
 
     async def balance(self):
-        return await self.async_private_api('get', '/'.join(['v1', 'user', 'balances']))
+        return await self.async__private_api('get', '/'.join(['v1', 'user', 'balances']))
