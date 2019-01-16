@@ -17,7 +17,7 @@ class BaseBinance:
             self.__key = kwargs['key']
             self.__secret = kwargs['secret']
 
-    def private_api(self, method, path, server_time, params=None):
+    def _private_api(self, method, path, server_time, params=None):
         if params is None:
             params = {}
 
@@ -25,9 +25,9 @@ class BaseBinance:
         params['signature'] = hmac.new(self.__secret.encode('utf-8'), urlencode(sorted(params.items())).encode('utf-8'),
                                        hashlib.sha256).hexdigest()
 
-        return self.public_api(method, path, params)
+        return self._public_api(method, path, params)
 
-    def public_api(self, method, path, params=None):
+    def _public_api(self, method, path, params=None):
         if params is None:
             params = {}
 
@@ -49,10 +49,10 @@ class BaseBinance:
             return True, res, ''
 
     def get_servertime(self):
-        return self.public_api('get', '/api/v1/time')
+        return self._public_api('get', '/api/v1/time')
 
     def get_exchange_info(self):
-        return self.public_api('get', '/api/v1/exchangeInfo')
+        return self._public_api('get', '/api/v1/exchangeInfo')
 
     def get_step_size(self, stat):
         return {sm['symbol']: sm['symbol']['filters'][1]['stepSize'] for sm in stat['symbols']}
@@ -68,7 +68,7 @@ class BaseBinance:
                     'type': 'MARKET'
                   }
 
-        return self.private_api('POST', '/api/v3/order', server_time, params)
+        return self._private_api('POST', '/api/v3/order', server_time, params)
 
     def sell(self, coin, amount, server_time):
         params = {
@@ -78,10 +78,10 @@ class BaseBinance:
                     'type': 'MARKET'
                   }
 
-        self.private_api('POST', '/api/v3/order', server_time, params)
+        self._private_api('POST', '/api/v3/order', server_time, params)
 
     def get_ticker(self):
-        return self.public_api('get', '/api/v1/ticker/24hr')
+        return self._public_api('get', '/api/v1/ticker/24hr')
 
     def withdraw(self, coin, amount, to_address, server_time, payment_id=None):
         params = {
@@ -93,7 +93,7 @@ class BaseBinance:
         if payment_id:
             params['addresstag'] = payment_id
 
-        return self.private_api('post', '/wapi/v3/withdraw.html', server_time, params)
+        return self._private_api('post', '/wapi/v3/withdraw.html', server_time, params)
 
     def get_candle(self, coin, unit, count):
         # old --> new
@@ -102,14 +102,14 @@ class BaseBinance:
                     'interval': '{}m'.format(unit),
                     'limit': count,
         }
-        return self.public_api('get', '/api/v1/klines', params)
+        return self._public_api('get', '/api/v1/klines', params)
 
     def get_candle_info(self, candle_data):
         candle_list = list(map(float, candle_data[1:7]))
         return {x: candle_list[n] for n, x in enumerate(['open', 'high', 'low', 'close', 'volume', 'timestamp'])}
 
     def get_uuid_history(self, uuid, symbol, server_time):
-        return self.private_api('get', '/api/v3/order', server_time, {'symbol': symbol, 'origClientOrderId': uuid})
+        return self._private_api('get', '/api/v3/order', server_time, {'symbol': symbol, 'origClientOrderId': uuid})
 
     def get_order_history(self, uuid_history):
         total_vol = 0
@@ -168,7 +168,7 @@ class BaseBinance:
         try:
             dic_ = {}
             for coin in coin_list:
-                suc, data, msg = await self.async_private_api('GET', '/wapi/v3/depositAddress.html', server_time, {'asset': coin})
+                suc, data, msg = await self.async__private_api('GET', '/wapi/v3/depositAddress.html', server_time, {'asset': coin})
 
                 if not data['success'] or not suc:
                     continue
@@ -205,7 +205,7 @@ class BaseBinance:
         return True, fees, ''
 
     async def get_balance(self, server_time):
-        return await self.async_private_api('GET', '/api/v3/account', server_time)
+        return await self.async__private_api('GET', '/api/v3/account', server_time)
 
     async def get_remain_coin(self, data):
         remaining = {}
