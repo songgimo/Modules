@@ -52,8 +52,8 @@ def detail_cropping(img):
         f.write(r.content)
     image = Image.open(path)
 
-    split_set = int(image.size[1] / 1500) + 1
     width, height = image.size
+    split_set = int(height / 1500) + 1
 
     point, details = 0, []
     for n in range(split_set):
