@@ -144,7 +144,7 @@ class Korbit:
         if params is None:
             params = {'nonce': int(time.time())}
 
-        return await self.async__public_api(method, path, params)
+        return await self.async_public_api(method, path, params)
 
     async def balance(self):
-        return await self.async__private_api('get', '/'.join(['v1', 'user', 'balances']))
+        return await self.async_private_api('get', '/'.join(['v1', 'user', 'balances']))
