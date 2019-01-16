@@ -13,13 +13,14 @@ import numpy as np
 
 
 class Korbit:
-    def __init__(self, key_, secret_, id_, pw):
+    def __init__(self, **kwargs):
         self.endpoint = 'https://api.korbit.co.kr'
 
-        self.__key = key_
-        self.__secret = secret_
-        self.__id = id_
-        self.__pw = pw
+        if kwargs:
+            self.__key = kwargs['key_']
+            self.__secret = kwargs['secret_']
+            self.__id = kwargs['id_']
+            self.__pw = kwargs['pw']
 
         self.__token = None
         self.token_time = 0
