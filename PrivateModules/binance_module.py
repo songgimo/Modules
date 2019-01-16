@@ -168,7 +168,7 @@ class BaseBinance:
         try:
             dic_ = {}
             for coin in coin_list:
-                suc, data, msg = await self.async__private_api('GET', '/wapi/v3/depositAddress.html', server_time, {'asset': coin})
+                suc, data, msg = await self.async_private_api('GET', '/wapi/v3/depositAddress.html', server_time, {'asset': coin})
 
                 if not data['success'] or not suc:
                     continue
@@ -205,7 +205,7 @@ class BaseBinance:
         return True, fees, ''
 
     async def get_balance(self, server_time):
-        return await self.async__private_api('GET', '/api/v3/account', server_time)
+        return await self.async_private_api('GET', '/api/v3/account', server_time)
 
     async def get_remain_coin(self, data):
         remaining = {}
