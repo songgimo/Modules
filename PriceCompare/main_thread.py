@@ -10,7 +10,7 @@ from selenium import webdriver
 
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-from PriceCompare import coin_thread
+from PriceCompare.coin_thread import ProcessingCoin
 
 
 class Widget(QWidget):
@@ -31,7 +31,7 @@ class Widget(QWidget):
         ud.start()
 
         for coin in coins:
-            ct = coin_thread(data_q, command_q, driver, coin)
+            ct = ProcessingCoin(data_q, command_q, driver, coin)
             ct.return_signal.connect(self.table_widget)
             ct.start()
 

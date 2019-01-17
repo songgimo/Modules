@@ -7,7 +7,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 # import binace_module for get ticker.
-from PrivateModules import binance_module
+from PrivateModules.binance_module import BaseBinance
 
 
 class ProcessingCoin(QThread):
@@ -20,47 +20,47 @@ class ProcessingCoin(QThread):
         self.driver = driver
         self.index = index
 
-        self.binance = binance_module()
+        self.binance = BaseBinance()
 
     def run(self):
         while True:
-            self.command_q.put(1)
-            data = self.data_q.get()  # {name: name, price: price}
+            if self.data_q.empty():
+                self.command_q.put(1)
+                data = self.data_q.get()  # {name: name, price: price}
 
-            upbit_price = profit = binance_set = {}
+                upbit_price = profit = binance_set = {}
 
-            for key in data:
-                if data[key]['name'] == self.index:
-                    upbit_price[key] = Decimal(data[key]['price'][1]).quantize(Decimal(10) ** -8)
-                    break
-                else:
-                    upbit_price[key] = 0
+                for key in data:
+                    if data[key]['name'] == self.index:
+                        upbit_price[key] = Decimal(data[key]['price'][1]).quantize(Decimal(10) ** -8)
+                        break
+                    else:
+                        upbit_price[key] = 0
 
-            suc, data, msg = self.binance.get_ticker()
+                suc, data, msg = self.binance.get_ticker()
 
-            if not suc:
-                # logger.debug(msg)
-                continue
+                if not suc:
+                    # logger.debug(msg)
+                    continue
 
-            for info in data:
-                symbol_price = Decimal(info['price']).quantize(Decimal(10) ** -8)
-                symbol_slice = info['symbol'][-3:]
+                for info in data:
+                    symbol_price = Decimal(info['price']).quantize(Decimal(10) ** -8)
+                    symbol_slice = info['symbol'][-3:]
 
-                if symbol_slice == 'BTC':
-                    binance_set['BTC'] = symbol_price
-                    profit['BTC'] = Decimal((symbol_price / upbit_price['BTC'] - 1) * 100).quantize(Decimal(10) ** -8)
+                    if symbol_slice == 'BTC':
+                        binance_set['BTC'] = symbol_price
+                        profit['BTC'] = Decimal((symbol_price / upbit_price['BTC'] - 1) * 100).quantize(Decimal(10) ** -8)
 
-                elif symbol_slice == 'ETH':
-                    binance_set['ETH'] = symbol_price
-                    profit['ETH'] = Decimal((symbol_price / upbit_price['ETH'] - 1) * 100).quantize(Decimal(10) ** -8)
+                    elif symbol_slice == 'ETH':
+                        binance_set['ETH'] = symbol_price
+                        profit['ETH'] = Decimal((symbol_price / upbit_price['ETH'] - 1) * 100).quantize(Decimal(10) ** -8)
 
-                else:  # symbol_slice == 'USDT':
-                    binance_set['USDT'] = symbol_price
-                    profit['USDT'] = Decimal((symbol_price / upbit_price['USDT'] - 1) * 100).quantize(Decimal(10) ** -8)
+                    else:  # symbol_slice == 'USDT':
+                        binance_set['USDT'] = symbol_price
+                        profit['USDT'] = Decimal((symbol_price / upbit_price['USDT'] - 1) * 100).quantize(Decimal(10) ** -8)
 
-            price_list = [self.index]
-            price_list += [[binance_set[base], profit[base]] for base in ['BTC', 'ETH', 'USDT']]
+                price_list = [self.index]
+                price_list += [[binance_set[base], profit[base]] for base in ['BTC', 'ETH', 'USDT']]
 
+                self.return_signal.emit(price_list)
 
-if __name__ == '__main__':
-    os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
