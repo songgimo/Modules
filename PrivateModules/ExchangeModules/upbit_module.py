@@ -17,8 +17,8 @@ class BaseUpbit:
         self._endpoint = 'https://api.upbit.com/v1'
 
         if kwargs:
-            self.__key = kwargs['key']
-            self.__secret = kwargs['secret']
+            self._key = kwargs['key']
+            self._secret = kwargs['secret']
 
     def _public_api(self, method, path, extra=None, header=None):
         if header is None:
@@ -50,7 +50,7 @@ class BaseUpbit:
 
     def _private_api(self, method, path, extra=None):
         payload = {
-            'access_key': self.__key,
+            'access_key': self._key,
             'nonce': int(time.time() * 1000),
         }
 
@@ -62,7 +62,7 @@ class BaseUpbit:
         return self._public_api(method, path, extra, header)
 
     def get_jwt_token(self, payload):
-        return 'Bearer {}'.format(jwt.encode(payload, self.__secret,).decode('utf8'))
+        return 'Bearer {}'.format(jwt.encode(payload, self._secret,).decode('utf8'))
 
     def get_ticker(self, market):
         return self._public_api('get', 'ticker', market)
@@ -157,7 +157,7 @@ class BaseUpbit:
 
     async def async_private_api(self, method, path, extra=None):
         payload = {
-            'access_key': self.__key,
+            'access_key': self._key,
             'nonce': int(time.time() * 1000),
         }
 

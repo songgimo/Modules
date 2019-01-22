@@ -17,12 +17,12 @@ class Korbit:
         self.endpoint = 'https://api.korbit.co.kr'
 
         if kwargs:
-            self.__key = kwargs['key_']
-            self.__secret = kwargs['secret_']
-            self.__id = kwargs['id_']
-            self.__pw = kwargs['pw']
+            self._key = kwargs['key_']
+            self._secret = kwargs['secret_']
+            self._id = kwargs['id_']
+            self._pw = kwargs['pw']
 
-        self.__token = None
+        self._token = None
         self.token_time = 0
 
     def _public_api(self, method, path, params=None):
@@ -53,15 +53,15 @@ class Korbit:
         return self._public_api(method, path, params)
 
     def header(self):
-        return {'Authorization': "{} {}".format(self.__token['token_type'], self.__token['access_token'])}
+        return {'Authorization': "{} {}".format(self._token['token_type'], self._token['access_token'])}
 
     def token_setting(self, params):
         try:
             rq = requests.post('/'.join([self.endpoint, 'v1', 'oauth2', 'access_token']), data=params)
-            self.__token = rq.json()
+            self._token = rq.json()
             self.token_time = int(time.time())
 
-            return True, self.__token, ''
+            return True, self._token, ''
 
         except Exception as ex:
             return False, '', '토큰 생성 실패. [{}]'.format(ex)
@@ -69,18 +69,18 @@ class Korbit:
     def get_token(self):
         # call before use another functions
         data = {
-            'client_id': self.__key,
-            'client_secret': self.__secret,
-            'username': self.__id,
-            'password': self.__pw,
+            'client_id': self._key,
+            'client_secret': self._secret,
+            'username': self._id,
+            'password': self._pw,
             'grant_type': 'password'
         }
         return self.token_setting(data)
 
     def refresh_token(self, refresh_token):
         data = {
-            'client_id': self.__key,
-            'client_secret': self.__secret,
+            'client_id': self._key,
+            'client_secret': self._secret,
             'refresh_token': refresh_token,
             'grant_type': 'refresh_token'
         }
