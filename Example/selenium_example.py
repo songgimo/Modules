@@ -1,74 +1,76 @@
 from selenium import webdriver
-import time
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.by import By
-import os, random
-import csv
-from selenium.webdriver.support.select import *
-import re
-import logging
-from datetime import datetime
+import random
 import configparser
+import threading
+import os
 import sys
-from selenium.webdriver.common.keys import *
-from urllib.parse import urlencode
-from selenium.common.exceptions import *
+import queue
+
+# import personal csv module
+from PrivateModules.Etc.csv_module import CSVModule
 
 
 cfg = configparser.ConfigParser()
 cfg.read('./Settings.ini')
 
-class NaverSelenium:
-    def __init__(self, driver):
-        self.driver = driver
+ROOT = os.path.dirname(os.path.abspath(__file__))
 
-    def reopen_chrome(self, proxy):
-        self.driver.quit()
+try:
+    driver_path = os.path.join(ROOT, cfg['Setting']['driver path'])
+    id_list_path = os.path.join(ROOT, cfg['Setting']['id file path'])
+    proxy_path = os.path.join(ROOT, cfg['Setting']['proxy path'])
+    thread_num = int(cfg['Setting']['thread_num'])
 
+except:
+    os.system("PAUSE")
+    sys.exit()
+
+
+class NaverSelenium(threading.Thread):
+    def __init__(self, q):
+        super(NaverSelenium, self).__init__()
+        self.driver = None
+        self.q = q
+
+    def driver_setting(self, proxy_ip):
+        self.driver = webdriver.Chrome(driver_path)
         self.chrome_options = webdriver.ChromeOptions()
-        self.chrome_options.add_argument("--silent")
-        self.chrome_options.add_argument("--disable-logging")
-        self.chrome_options.add_argument("--log-level=3")
+        self.chrome_options.add_argument('--proxy-server={}'.format(proxy_ip))
 
-        if proxy:
-            next(proxy)
-
-        self.driver = webdriver.Chrome(driver_path, chrome_options=self.chrome_options)
-
-        self.driver.set_page_load_timeout(60)
         self.driver.implicitly_wait(30)
+        self.driver.set_page_load_timeout(60)
 
-    def set_options(self):
-
-
-    def import_proxies(self, proxy_path):
+    def import_proxies(self):
         with open(proxy_path, 'r') as f:
-            try:
-                self.__proxy_list = f.read().split('\n')  # 프록시목록
-                return True, self.__proxy_list, 'Successfully load proxy list.'
-            except Exception as e:
-                return False, '', 'invalid proxy list [{}]'.format(e)
+            proxy_list = f.read().split('\n')  # 프록시목록
 
-    def proxy_set(self):
-        while True:
-            for proxy in self.__proxy_list:
-                self.chrome_options.add_argument('--proxy-server={}'.format(proxy))
-                yield
+        return proxy_list
 
+    def crolling_news(self):
+        return 'news_data'
 
+    def run(self):
+        proxy_list = self.import_proxies()
+
+        while self.q.qsize():
+            proxy = random.choice(proxy_list)
+
+            self.driver_setting(proxy)
 
 
 if __name__ == '__main__':
-    driver = webdriver.Chrome(cfg['Settings']['driver path'])
-    chrome_options = webdriver.ChromeOptions()
-    chrome_options.add_argument("--silent")
-    chrome_options.add_argument("--disable-logging")
-    chrome_options.add_argument("--log-level=3")
+    DEBUG = True
 
-    driver = webdriver.Chrome(cfg['Settings']['driver path'], chrome_options=chrome_options)
+    c = CSVModule()
 
+    # [[id, pw], [..., ...]]
+    list_ = c.import_csv(id_list_path)
 
+    id_queue = queue.Queue()
+    list(map(id_queue.put, list_))
 
-    if proxy:
+    for _ in range(thread_num):
+        t = NaverSelenium(id_queue)
+        t.start()
+
 
