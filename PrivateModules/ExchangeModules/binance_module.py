@@ -7,60 +7,100 @@ from decimal import *
 import asyncio
 import time
 import aiohttp
+import math
+
+DEBUG = True
 
 
 class BaseBinance:
     def __init__(self, **kwargs):
         self._endpoint = 'https://api.binance.com'
+        self._page_endopoint = 'https://www.binance.com'
+        self._exchange_info = {}
+        # 처음에 무조건 불러와야하는 함수.
+        self.get_exchange_info()
 
         if kwargs:
-            self.__key = kwargs['key']
-            self.__secret = kwargs['secret']
+            self._key = kwargs['key']
+            self._secret = kwargs['secret']
+            self._default_header = {"X-MBX-APIKEY": self._key}
 
-    def _private_api(self, method, path, server_time, params=None):
+    def _private_api(self, method, path, params=None):
         if params is None:
             params = {}
 
-        params['timestamp'] = server_time
-        params['signature'] = hmac.new(self.__secret.encode('utf-8'), urlencode(sorted(params.items())).encode('utf-8'),
-                                       hashlib.sha256).hexdigest()
+        s, nonce, m, t = self._get_servertime()
 
-        return self._public_api(method, path, params)
+        if not s:
+            return False, '', 'ServerTime을 가져오는데 실패했습니다.[{}]'.format(m), t
 
-    def _public_api(self, method, path, params=None):
-        if params is None:
-            params = {}
+        params['timestamp'] = nonce
+        sign = hmac.new(self._secret.encode('utf-8'), urlencode(sorted(params.items())).encode('utf-8'),
+                        hashlib.sha256).hexdigest()
 
-        if method == 'GET':
-            rq = requests.get(path, json=params, headers={"X-MBX-APIKEY": self.__key})
+        query = "{}&signature={}".format(urlencode(sorted(params.items())), sign)
+        path = '{}?{}'.format(path, query)
 
-        elif method == 'POST':
-            rq = requests.post(path, data=params, headers={"X-MBX-APIKEY": self.__key})
+        return self._public_api(method, path, headers=self._default_header)
+
+    def _public_api(self, method, path, params=None, headers=None):
+        try:
+            if params is None:
+                params = {}
+
+            if headers is None:
+                headers = {}
+
+            method = method.upper()
+            path = '/'.join([self._endpoint, path])
+
+            if method == 'GET':
+                rq = requests.get(path, params=params, headers=headers)
+
+            elif method == 'POST':
+                rq = requests.post(path, data=params, headers=headers)
+
+            else:
+                return False, '', '[Binance]incorrect method[{}]'.format(method), 1
+
+            if rq.status_code > 200:
+                return False, '', '[Binance]Request Fail[{}], [{}]'.format(rq.status_code, rq.text), 5
+
+            res = rq.json()
+
+            if 'msg' in res:
+                return False, '', res['msg'], 1
+
+            else:
+                return True, res, '', 0
+        except Exception as ex:
+            return False, '', '[Binance]Unexpected Error[{}]'.format(ex), 1
+
+    def _get_servertime(self):
+        # 바이낸스는 Nonce를 servertime을 통해 가져와야 한다.
+        for _ in range(3):
+            s, d, m, t, = self._public_api('get', '/'.join(['api', 'v1', 'time']))
+            if s:
+                return True, d['serverTime'], '', 0
+            time.sleep(1)
 
         else:
-            return False, '', '[{}]Incorrect method'.format(method)
+            return False, '', m, 1
 
-        res = rq.json()
+    def _get_exchange_info(self):
+        # Binance에서 service하는 기본적인 코인들의 정보들이 들어있음.
+        # {symbols:[{'symbol':...,}], {etc:}, ... }형태가 리턴 된다.
+        return self._public_api('get', '/'.join(['api', 'v1', 'exchangeInfo']))
 
-        if 'msg' in res:
-            return False, '', res['msg']
+    def get_currencies(self):
+        # Binance에서 service하는 coin값을 가져온다.
+        # [BTC, ...] 형태의 값이 반환 됨
 
-        else:
-            return True, res, ''
+        return True, [ables.split('_')[1] for ables in self._exchange_info.keys()] + ['BTC'], '', 0
 
-    def get_servertime(self):
-        return self._public_api('get', '/api/v1/time')
-
-    def get_exchange_info(self):
-        return self._public_api('get', '/api/v1/exchangeInfo')
-
-    def get_step_size(self, stat):
-        return {sm['symbol']: sm['symbol']['filters'][1]['stepSize'] for sm in stat['symbols']}
-
-    def service_currencies(self, data):
-        return list(data)
-
-    def buy(self, coin, amount, server_time):
+    def buy(self, coin, amount):
+        if DEBUG:
+            return True, '', 'DEBUG 상태입니다.', 0
         params = {
                     'symbol': coin,
                     'side': 'buy',
@@ -68,9 +108,12 @@ class BaseBinance:
                     'type': 'MARKET'
                   }
 
-        return self._private_api('POST', '/api/v3/order', server_time, params)
+        return self._private_api('POST', '/'.join(['api', 'v3', 'order']), params)
 
-    def sell(self, coin, amount, server_time):
+    def sell(self, coin, amount):
+        if DEBUG:
+            return True, '', 'DEBUG 상태입니다.', 0
+
         params = {
                     'symbol': coin,
                     'side': 'sell',
@@ -78,12 +121,13 @@ class BaseBinance:
                     'type': 'MARKET'
                   }
 
-        self._private_api('POST', '/api/v3/order', server_time, params)
+        return self._private_api('POST', '/'.join(['api', 'v3', 'order']), params)
 
     def get_ticker(self):
-        return self._public_api('get', '/api/v1/ticker/24hr')
+        # [{}, {}]형태의 값이 반환 됨.
+        return self._public_api('get', '/'.join(['api', 'v1', 'ticker', '24hr']))
 
-    def withdraw(self, coin, amount, to_address, server_time, payment_id=None):
+    def withdraw(self, coin, amount, to_address, payment_id=None):
         params = {
                     'asset': coin,
                     'address': to_address,
@@ -93,7 +137,7 @@ class BaseBinance:
         if payment_id:
             params['addresstag'] = payment_id
 
-        return self._private_api('post', '/wapi/v3/withdraw.html', server_time, params)
+        return self._private_api('post', '/'.join(['wapi', 'v3', 'withdraw.html']), params)
 
     def get_candle(self, coin, unit, count):
         # old --> new
@@ -102,73 +146,106 @@ class BaseBinance:
                     'interval': '{}m'.format(unit),
                     'limit': count,
         }
-        return self._public_api('get', '/api/v1/klines', params)
+        return self._public_api('get', '/'.join(['api', 'v1', 'klines']), params)
 
-    def get_candle_info(self, candle_data):
-        candle_list = list(map(float, candle_data[1:7]))
-        return {x: candle_list[n] for n, x in enumerate(['open', 'high', 'low', 'close', 'volume', 'timestamp'])}
+    def get_exchange_info(self):
+        # symbol 정보 값에서 각 코인의 step단위를 구하는 함수.
+        # get_step_size 함수, service_currencies에 쓰이는 함수이며 처음에 호출되어야 하는 함수임.
+        s, stat, m, t = self._get_exchange_info()
 
-    def get_uuid_history(self, uuid, symbol, server_time):
-        return self._private_api('get', '/api/v3/order', server_time, {'symbol': symbol, 'origClientOrderId': uuid})
+        if not s:
+            return False, '', m, 5
 
-    def get_order_history(self, uuid_history):
-        total_vol = 0
-        for trade_data in uuid_history:
-            total_vol += Decimal(trade_data['origQty']).quantize(Decimal(10) ** -8, rounding=ROUND_DOWN)
+        step_size = {}
+        for sym in stat['symbols']:
+            symbol = sym['symbol']
+            market_coin = symbol[-3:]
 
-        return {'market': uuid_history['symbol'], 'volume': total_vol}
+            if 'BTC' in market_coin:
+                trade_coin = symbol[:-3]
+                # BNBBTC -> BTC-BNB
+                coin = market_coin + '_' + trade_coin
 
-    async def async_private_api(self, method, path, server_time, params=None):
+                step_size.update({
+                    coin: sym['filters'][2]['stepSize']
+                })
+
+        self._exchange_info = step_size
+
+        return True, '', 'ExchangeInfo를 성공적으로 불러왔습니다.', 0
+
+    async def _async_private_api(self, method, path, params=None):
+        if params is None:
+            params = {}
+
+        s, nonce, m, t = self._get_servertime()
+
+        if not s:
+            return False, '', 'ServerTime을 가져오는데 실패했습니다.[{}]'.format(m), t
+
+        params['timestamp'] = nonce
+        sign = hmac.new(self._secret.encode('utf-8'), urlencode(sorted(params.items())).encode('utf-8'),
+                        hashlib.sha256).hexdigest()
+
+        query = "{}&signature={}".format(urlencode(sorted(params.items())), sign)
+        path = '{}?{}'.format(path, query)
+
+        params.pop('timestamp')
+        return await self._async_public_api(method, path, params, headers=self._default_header)
+
+    async def _async_public_api(self, method, path, params=None, headers=None, end_point=None):
+        # end_point parameter가 추가된 이유는 get_transactionFee는 binance.com을 사용하기 때문.
+        method = method.upper()
+        if headers is None:
+            headers = {}
+        if params is None:
+            params = {}
+
+        if end_point is None:
+            end_point = self._endpoint
+
+        if params and headers and method == 'GET':
+            # deposit_addrs같은 경우(path+ ?+query의 경우), params를 넣어선 안됨.
+            params = {}
+
         try:
-            async with aiohttp.ClientSession(headers={"X-MBX-APIKEY": self.__key}) as s:
-                if params is None:
-                    params = {}
+            async with aiohttp.ClientSession(headers=headers) as s:
+                method = method.upper()
 
-                params['timestamp'] = server_time
-                path = '/'.join([self._endpoint, path])
                 if method == 'GET':
-                    sig = hmac.new(self.__secret.encode('utf-8'), urlencode(sorted(params.items())).encode('utf-8'),
-                                   hashlib.
-                                   sha256).hexdigest()
+                    rq = await s.get('/'.join([end_point, path]), params=params)
 
-                    query = "{}&signature={}".format(urlencode(sorted(params.items())), sig)
-                    rq = await s.get('{}?{}'.format(path, query))
+                elif method == 'POST':
+                    rq = await s.post('/'.join([end_point, path]), data=params)
+
                 else:
-                    rq = await s.post(path, data=params)
+                    return False, '', '[{}]incorrect method'.format(method), 1
+
+                if rq.status > 200:
+                    return False, '', '[Binance]Request Fail[{}], [{}]'.format(rq.status, rq.text), 5
 
                 res = json.loads(await rq.text())
 
                 if 'msg' in res:
-                    return False, res, res['msg']
-
-                return True, res, ''
-
-        except Exception as ex:
-            return False, '', 'Error[{}]'.format(ex)
-
-    async def async_public_api(self, path, params=None):
-        try:
-            async with aiohttp.ClientSession() as s:
-                if params is None:
-                    params = {}
-
-                rq = await s.get('/'.join([self._endpoint, path]), params=params)
-                res = json.loads(await rq.text())
-
-                if 'msg' in res:
-                    return False, '', res['msg']
+                    return False, '', res['msg'], 1
 
                 else:
-                    return True, res, ''
+                    return True, res, '', 0
 
         except Exception as ex:
-            return False, '', 'Error[{}]'.format(ex)
+            return False, '', 'Error[{}]'.format(ex), 1
 
-    async def get_deposit_addrs(self, coin_list, server_time):
+    async def _get_deposit_addrs(self, coin):
+        return await self._async_private_api('GET', '/'.join(['wapi', 'v3', 'depositAddress.html']), {'asset': coin})
+
+    async def get_deposit_addrs(self, coin_list=None):
+        if coin_list is None:
+            s, coin_list, m, t = self.get_currencies()
         try:
             dic_ = {}
             for coin in coin_list:
-                suc, data, msg = await self.async_private_api('GET', '/wapi/v3/depositAddress.html', server_time, {'asset': coin})
+                time.sleep(0.1)
+                suc, data, msg, time_ = await self._get_deposit_addrs(coin)
 
                 if not data['success'] or not suc:
                     continue
@@ -176,43 +253,29 @@ class BaseBinance:
                 dic_[coin] = data['address']
 
                 if 'addressTag' in data:
-                    dic_['{}TAG'.format(coin)] = data['addressTag']
+                    if data['addressTag']:
+                        dic_['{}TAG'.format(coin)] = data['addressTag']
 
-            return True, dic_, ''
+            return True, dic_, '', 0
 
         except Exception as ex:
-            return False, '', 'Error[{}]'.format(ex)
+            return False, '', 'Error[{}]'.format(ex), 10
 
-    async def get_trading_fee(self):
-        return True, 0.001, ''
+    async def _get_balance(self):
+        return await self._async_private_api('GET', '/'.join(['api', 'v3', 'account']))
 
-    async def get_transaction_fee(self):
-        async with aiohttp.ClientSession() as s:
-            fees = {}
+    async def balance(self):
+        # {BTC:float(0.012)} 형태의 값이 반환 된다.
 
-            rq = await s.get('https://www.binance.com/assetWithdraw/getAllAsset.html')
-            data = json.loads(await rq.text())
+        s, data, m, t = await self._get_balance()
 
-            if not data:
-                return False, '', 'fail to load data'
+        if not s:
+            return False, '', '[Binance]{}'.format(m), 5
 
-        for f in data:
-            if f['assetCode'] == 'BCC':
-                f['assetCode'] = 'BCH'
+        remaining = {bal['asset'].upper(): float(bal['free']) for bal in data['balances'] if float(bal['free']) > 0}
 
-            fees[f['assetCode']] = Decimal(f['transactionFee']).quantize(Decimal(10)**-8)
+        return True, remaining, '', 0
 
-        return True, fees, ''
-
-    async def get_balance(self, server_time):
-        return await self.async_private_api('GET', '/api/v3/account', server_time)
-
-    async def get_remain_coin(self, data):
-        remaining = {}
-        for bal in data['balances']:
-            if float(bal['free']) > 0:
-                remaining[bal['asset'].upper()] = float(bal['free'])
-
-        return remaining
-
+    async def get_orderbook(self, coin):
+        return await self._async_public_api('GET', '/'.join(['api', 'v1', 'depth']), {'symbol': coin})
 
