@@ -38,6 +38,9 @@ Pycharm
 
 
 ## Update log
+* 0.0.13
+   * Algorithm first update.
+   
 * 0.0.12
    * ImageServer update.
 
