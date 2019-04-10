@@ -38,6 +38,9 @@ Pycharm
 
 
 ## Update log
+* 0.0.14
+   * KiwoomAPI first update.
+
 * 0.0.13
    * Algorithm first update.
    
