@@ -174,4 +174,3 @@ class KiwoomApiModule:
         scn_no = stock_code
         return self._send_order('sell_order', scn_no, account, order_type, stock_code, qty, price, trade_type, '')
 
-
